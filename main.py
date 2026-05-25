@@ -4,6 +4,7 @@ Phase 0: CLI entry points + directory structure
 Phase 1: PDF merge/split, Pillow image compression
 Phase 2: Automated tests with dummy documents
 """
+import io
 import os
 import sys
 import argparse
@@ -26,11 +27,13 @@ def ensure_dirs(input_dir: str = "input", output_dir: str = "output"):
 
 def merge_pdfs(pdf_paths: list[str], output_path: str) -> str:
     """Merge multiple PDFs into one."""
-    merger = pypdf.PdfMerger()
+    writer = pypdf.PdfWriter()
     for path in pdf_paths:
-        merger.append(path)
-    merger.write(output_path)
-    merger.close()
+        reader = pypdf.PdfReader(path)
+        for page in reader.pages:
+            writer.add_page(page)
+    with open(output_path, "wb") as f:
+        writer.write(f)
     return output_path
 
 
@@ -38,6 +41,7 @@ def split_pdf(pdf_path: str, output_dir: str) -> list[str]:
     """Split PDF into individual page files."""
     reader = pypdf.PdfReader(pdf_path)
     pages = reader.pages
+    os.makedirs(output_dir, exist_ok=True)
     output_files = []
     for i, page in enumerate(pages):
         writer = pypdf.PdfWriter()

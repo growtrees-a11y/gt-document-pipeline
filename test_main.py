@@ -6,6 +6,7 @@ import os
 import io
 import tempfile
 import pytest
+import pypdf
 from PIL import Image
 from main import merge_pdfs, split_pdf, compress_pdf_images, compress_image, ensure_dirs
 
