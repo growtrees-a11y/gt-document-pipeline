@@ -1,0 +1,62 @@
+version: "3.8"
+
+services:
+  # ── API Service ────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - DATA_DIR=/data
+    volumes:
+      - pdf_data:/data
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - docnet
+
+  # ── Celery Worker ────────────────────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - DATA_DIR=/data
+    volumes:
+      - pdf_data:/data
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - docnet
+
+  # ── Redis (Broker + Result Backend) ──────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks:
+      - docnet
+
+# ── Volumes ────────────────────────────────────────────────────────
+volumes:
+  pdf_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# ── Networks ──────────────────────────────────────────────────────
+networks:
+  docnet:
+    driver: bridge

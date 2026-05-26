@@ -1,0 +1,46 @@
+# ── .dockerignore ─────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.tox/
+venv/
+.venv/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Version control
+.git/
+.gitignore
+
+# Docker (don't copy into self)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Docs / misc
+README.md
+LICENSE
+*.md
+docs/
+node_modules/
+.flake8
+pyproject.toml
+setup.cfg
+tox.ini
+
+# Test artifacts
+test_artifacts/
+input/
+output/

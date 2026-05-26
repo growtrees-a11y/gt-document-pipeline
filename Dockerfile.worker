@@ -1,0 +1,37 @@
+# ── Build Stage ─────────────────────────────────────────────────────
+FROM python:3.11-slim AS builder
+
+WORKDIR /app
+
+# Install build dependencies for Image libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libjpeg-dev \
+    zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+RUN pip install --no-cache-dir --prefix=/install celery[redis]
+
+COPY . .
+
+RUN python -m pytest test_main.py -v --tb=short || exit 1
+
+
+# ── Runtime Stage ───────────────────────────────────────────────────
+FROM python:3.11-slim AS runtime
+
+WORKDIR /app
+
+COPY --from=builder /install /usr/local
+COPY . .
+
+# Shared volume for PDF uploads/processing
+RUN mkdir -p /data
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD celery -A celery_app inspect ping || exit 1
+
+ENTRYPOINT ["celery", "-A", "celery_app", "worker", "--concurrency=4"]

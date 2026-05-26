@@ -1,0 +1,72 @@
+version: "3.8"
+
+# Production overrides — separate compute nodes + resource limits
+services:
+  # ── Workers: isolated compute with resource constraints ────────
+  worker:
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 4G
+        reservations:
+          cpus: "2"
+          memory: 2G
+    scale: 2
+    environment:
+      - CELERY_WORKER_CONCURRENCY=8
+      - CELERY_WORKER_PREFETCH_MULTIPLIER=2
+    restart: always
+
+  # ── Worker 2: additional compute node ──────────────────────────
+  worker-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - DATA_DIR=/data
+    volumes:
+      - pdf_data:/data
+    depends_on:
+      - redis
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 4G
+        reservations:
+          cpus: "2"
+          memory: 2G
+    networks:
+      - docnet
+
+  # ── Redis: production-ready settings ────────────────────────────
+  redis:
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 1g
+      --maxmemory-policy allkeys-lru
+      --save ""
+      --lazyfree-lazy-eviction yes
+
+  # ── API: tighter limits for stateless service ──────────────────
+  api:
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+        reservations:
+          cpus: "1"
+          memory: 512M
+    restart: always
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
